@@ -28,6 +28,30 @@ if [[ -n $(git status --porcelain) ]]; then
     exit 1
 fi
 
+echo "[4] Веб-сервер"
+check "Конфигурация nginx корректна" "0" "$(sudo nginx -t > /dev/null 2>&1; echo $?)"
+
+# Проверка срока действия сертификата (должен быть больше 30 дней)
+CERT_END=$(sudo openssl x509 -enddate -noout -in /etc/ssl/certs/devops.crt | cut -d= -f2)
+CERT_END_SEC=$(date -d "$CERT_END" +%s)
+NOW_SEC=$(date +%s)
+DAYS_LEFT=$(( (CERT_END_SEC - NOW_SEC) / 86400 ))
+if [[ $DAYS_LEFT -gt 30 ]]; then
+    echo " [OK]  Сертификат действителен ($DAYS_LEFT дней)"
+    ((PASS++))
+else
+    echo " [FAIL] Сертификат истекает слишком скоро ($DAYS_LEFT дней)"
+    ((FAIL++))
+fi
+
+# Проверка отсутствия файлов с правом записи для всех
+W_WRITABLE=$(find /var/www/devops-site -perm -o+w | wc -l)
+check "Нет файлов с правом записи для всех" "0" "$W_WRITABLE"
+
+# Проверка прав ключа (должно быть 600)
+KEY_PERMS=$(sudo stat -c '%a' /etc/ssl/private/devops.key)
+check "Права ключа 600" "600" "$KEY_PERM"
+
 # 3. Синхронизация (Требование 3 и 8)
 RSYNC_OPTS=(-avz --delete --chmod=D755,F644 -e "ssh -o BatchMode=yes -o ConnectTimeout=5")
 if [[ "${DRY_RUN}" == "true" ]]; then
