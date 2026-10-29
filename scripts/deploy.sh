@@ -58,6 +58,21 @@ if [[ "${DRY_RUN}" == "true" ]]; then
     RSYNC_OPTS+=(--dry-run)
 fi
 
+echo "[5] Контейнеризация"
+check "Служба docker активна" "active" "$(systemctl is-active docker)"
+
+# Проверка health контейнера (имя может отличаться, проверь через docker ps)
+# Если проект запущен из папки app, контейнер обычно называется app-db-1
+check "СУБД в состоянии healthy" "healthy" "$(docker inspect -f '{{.State.Health.Status}}' app-db-1 2>/dev/null || echo 'not_found')"
+
+# Проверка, что порты не торчат наружу (кроме 127.0.0.1)
+EXPOSED_PORTS=$(sudo ss -tln | grep -E ':(5000|5432)\b' | grep -v '127.0.0.1' | wc -l)
+check "Порты 5000 и 5432 не доступны извне" "0" "$EXPOSED_PORTS"
+
+# Проверка прав .env
+ENV_PERMS=$(stat -c '%a' ~/app/.env 2>/dev/null || echo 'missing')
+check "Права .env 600" "600" "$ENV_PERMS"
+
 echo "Начинаем синхронизацию..."
 rsync "${RSYNC_OPTS[@]}" "${LOCAL_DIR}" "${REMOTE}:${REMOTE_DIR}/"
 
