@@ -1,0 +1,6 @@
+---
+app_image: "ghcr.io/egor-glushenko/devops-ci-app"
+app_tag: "dbce45a52c811ba49c02fb88ba2adcbb59c33d09"
+app_container_name: "devops-ci-app"
+app_host_port: 5000
+app_internal_port: 5000
