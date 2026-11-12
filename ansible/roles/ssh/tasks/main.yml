@@ -54,6 +54,7 @@
     proto: tcp
   loop:
     - "22"
+    - "2222"
     - "80"
 
 - name: Set incoming firewall policy
